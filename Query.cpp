@@ -109,10 +109,20 @@ DateRange::DateRange(std::string str_range)
     month = -1;
     day = -1;
     if (str_range.size() == 0) return;
-    unsigned int pos = str_range.find('.');
-    year = std::stoi(str_range.substr(0,pos));
-    unsigned int pos1 = str_range.find('.',pos+1);
-    month = std::stoi(str_range.substr(pos,pos1));
+    int pos = str_range.find('-');
+    if (pos != std::string::npos) {
+        year = std::stoi(str_range.substr(0, pos));
+    } else {
+        year = std::stoi(str_range);
+        return;
+    }
+    int pos1 = str_range.find('-',pos+1);
+    if (pos1 != std::string::npos) {
+        month = std::stoi(str_range.substr(pos, pos1));
+    } else {
+        month = std::stoi(str_range.substr(pos));
+        return;
+    }
     day = std::stoi(str_range.substr(pos1+1));
 }
 /*
@@ -158,25 +168,34 @@ FioRange::~FioRange()
 }
  */
 std::string Query::read_field(std::string field_name, std::string query) {
-    unsigned int pos = query.find(field_name);
-    unsigned  int pos1 = query.find('\t',pos+1);
-    return query.substr(pos+1,pos1);
+    int pos = query.find(field_name);
+    if(pos != std::string::npos) {
+        int pos1 = query.find('\t', pos + 1);
+        unsigned int value_index = pos + field_name.length();
+        if(pos1 != std::string::npos) {
+            return query.substr(value_index, pos1 - value_index );
+        } else {
+            return query.substr(value_index);
+        }
+    } else {
+        return "";
+    }
 }
 
 Query::Query(std::string query) {
-    this->id = Range(read_field("id", query));
+    this->id = Range(read_field("id=", query));
     //lastName=Иванов
     //firstName=Иван
     //patronimic=Иванович
     this->fio = FioRange(
-            read_field("firstName", query),
-            read_field("lastName", query),
-            read_field("patronimic", query)
+            read_field("firstName=", query),
+            read_field("lastName=", query),
+            read_field("patronimic=", query)
     );
     //ip=123.168.*.*
-    this->ip = IpRange(read_field("ip", query));
+    this->ip = IpRange(read_field("ip=", query));
     //ip=123.168.*.*
-    this->date = DateRange(read_field("date", query));
+    this->date = DateRange(read_field("date=", query));
 }
 /*
 Query::~Query() {

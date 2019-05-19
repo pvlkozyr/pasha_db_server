@@ -94,8 +94,9 @@ std::vector<Record> Database::select_recs(Query q)
 {
     std::vector<Record> s;
     for (size_t i = 0; i < db.size(); i++) {
-        if (q.check(db[i])) s.push_back(db[i]);
-        std::cout<<db[i].print();
+        if (q.check(db[i])) {
+            s.push_back(db[i]);
+        }
     }
     return s;
 }

@@ -5,15 +5,21 @@
 #include "gen.h"
 #include "Query.h"
 #include <string>
+
 int main() {
-    /*gen("C:\\Users\\nagat\\Desktop\\name.txt",
-        "C:\\Users\\nagat\\Desktop\\fam.txt",
-        "C:\\Users\\nagat\\Desktop\\otch.txt",
-        "C:\\Users\\nagat\\Desktop\\db.txt",5);
-        */
-    Database db("C:\\Users\\nagat\\Desktop\\db.txt");
-    db.print("C:\\Users\\nagat\\Desktop\\test.txt");
-    Query q("firstName=ГАЛАКТИОНОВ");
-    db.select_recs(q);
+//    gen("name.txt",
+//        "fam.txt",
+//        "otch.txt",
+//        "db.txt",5);
+//    db.print("test.txt");
+    Database db("test.txt");
+    std::string query = "firstName=ШАБАШЕВ";
+    Query q(query);
+    std::vector<Record> s = db.select_recs(q);
+    std::cout << query << " found " << s.size() << "\n";
+    query = "date=2016";
+    q = Query(query);
+    s = db.select_recs(q);
+    std::cout << query << " found " << s.size() << "\n";
     return 0;
 }
