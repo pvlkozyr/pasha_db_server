@@ -33,12 +33,7 @@ Range::Range(std::string str_range) {
         min = std::stoi(str_range);
     }
 }
-/*
-Range::~Range()
-{
-    min = NULL;
-    max = NULL;
-}*/
+
 IpRange::IpRange()
 {
     o1 = -1;
@@ -75,15 +70,6 @@ IpRange::IpRange(std::string str_range)
     o3 = std::stoi(str_range.substr(pos1,pos));
     o4 = std::stoi(str_range.substr(pos+1));
 }
-/*
-IpRange::~IpRange()
-{
-    o1 = NULL;
-    o2 = NULL;
-    o3 = NULL;
-    o4 = NULL;
-}
-*/
 DateRange::DateRange()
 {
     year = -1;
@@ -125,14 +111,6 @@ DateRange::DateRange(std::string str_range)
     }
     day = std::stoi(str_range.substr(pos1+1));
 }
-/*
-DateRange::~DateRange()
-{
-    year = NULL;
-    month = NULL;
-    day = NULL;
-}
-*/
 
 FioRange::FioRange()
 {
@@ -159,14 +137,6 @@ FioRange::FioRange(std::string firstName,std::string lastName,std::string patron
     this->patronimic = patronimic;
 }
 
-/*
-FioRange::~FioRange()
-{
-    firstName = "";
-    lastName = "";
-    patronimic = "";
-}
- */
 std::string Query::read_field(std::string field_name, std::string query) {
     int pos = query.find(field_name);
     if(pos != std::string::npos) {
@@ -197,11 +167,6 @@ Query::Query(std::string query) {
     //ip=123.168.*.*
     this->date = DateRange(read_field("date=", query));
 }
-/*
-Query::~Query() {
-
-}
-*/
 bool Query::check(Record record) {
     return this->id.check(record.id)
            &&
