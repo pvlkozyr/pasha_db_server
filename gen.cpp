@@ -88,7 +88,8 @@ void gen(std::string finname, std::string finfam, std::string finotch, std::stri
         date = std::to_string(y) + "-";
         date += std::string(2 - std::to_string(m).length(), '0') + std::to_string(m) + '-';
         date += std::string(2 - std::to_string(d).length(), '0') + std::to_string(d);
-        file3 << date + "\t";
+        file3 << date;
+        /*
         tin = "";
         tout = "";
         for (int j = 0; j < 24; j++) {
@@ -99,6 +100,7 @@ void gen(std::string finname, std::string finfam, std::string finotch, std::stri
         }
         file3 << tin + "\t";
         file3 << tout + "\t";
+         */
         if (i < SIZE - 1) file3 << '\n';
  
       //  std::cout << "Record added successfully loop2" << std::endl;

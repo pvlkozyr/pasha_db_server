@@ -3,13 +3,14 @@
 #include <fstream>
 #include <algorithm>
 #include "Database.h"
+#include "Record.h"
 #include <cstring>
 #define PRICE 5
 Database::Database() {
     std::cout << "no database file specified" << std::endl;
 }
- 
-void intarr(std::string s,std::vector<int> a,char ptr)
+/*
+void traffic(std::string s,std::vector<int> a,char ptr)
 {
     std::string tmp = "";
     for (size_t i=0;i<strlen(s.c_str());i++)
@@ -23,7 +24,7 @@ void intarr(std::string s,std::vector<int> a,char ptr)
       }
  
 }
- 
+ */
 Database::Database(std::string fname) {
     dbname = fname;
     std::ifstream file(fname);
@@ -31,34 +32,47 @@ Database::Database(std::string fname) {
         std::cout << "file doesn't exist" << std::endl;
         return;
     }
-    record t;
-    int c;
-    std::string z;
+    Record t;
+    int c = 0;
     while (!file.eof()) {
-        std::getline(file,t.fio,'\t');
-        std::cout << t.fio << std::endl;
-        std::getline(file,t.ip,'\t');
-        std::cout <<  t.ip <<std::endl;
-        intarr(t.ip,t.clip,'.');
-        std::getline(file,t.date,'\t');
-        std::cout << t.date << std::endl;
-        intarr(t.date,t.cldate,'-');
-        std::getline(file,t.tin,'\t');
-        std::cout << t.tin << std::endl;
-        intarr(t.tin,t.cltin,' ');
-        std::getline(file,t.tout,'\t');
-        std::cout << t.tout << std::endl;
-        intarr(t.tout,t.cltout,' ');
+        std::getline(file,t.fio.firstName,' ');
+        std::getline(file,t.fio.lastName,' ');
+        std::getline(file,t.fio.patronimic,'\t');
+        std::string tmp;
+        std::getline(file,tmp,'.');
+        t.ip.o1 = std::stoi(tmp);
+        std::getline(file,tmp,'.');
+        t.ip.o2 = std::stoi(tmp);
+        std::getline(file,tmp,'.');
+        t.ip.o3 = std::stoi(tmp);
+        std::getline(file,tmp,'\t');
+        t.ip.o4 = std::stoi(tmp);
+        std::getline(file,tmp,'-');
+        t.date.year = std::stoi(tmp);
+        std::getline(file,tmp,'-');
+        t.date.month = std::stoi(tmp);
+        std::getline(file,tmp,'\n');
+        t.date.day = std::stoi(tmp);
         c++;
         t.id = c;
-        std::getline(file,z,'\n');
         db.push_back(t);
     }
     std::cout << "added: " << db.size() << std::endl;
     file.close();
  
 }
- 
+
+void Database::print(std::string fname)
+{
+    std::ofstream file(fname);
+    for (int i = 0; i < db.size();i++)
+    {
+        file<<db[i].print();
+    }
+    file.close();
+}
+
+ /*
 Database::~Database() {
     std::ofstream temp;
     temp.open("temp");
@@ -71,53 +85,28 @@ Database::~Database() {
     temp.close();
     std::remove(dbname.c_str());
     std::rename("temp", dbname.c_str());
+}*/
+void Database::add_rec(Record t) {
+    std::cout << "Record added successfully" << std::endl;
+    db.push_back(t);
 }
-void Database::delete_recs(std::vector<int> s) {
-    std::sort(s.begin(), s.end());
-    while (!s.empty()) {
-        //std::cout << s.back() << std::endl;
-        db.erase(db.begin() + s.back());
-        s.pop_back();
+std::vector<Record> Database::select_recs(Query q)
+{
+    std::vector<Record> s;
+    for (size_t i = 0; i < db.size(); i++) {
+        if (q.check(db[i])) s.push_back(db[i]);
+        std::cout<<db[i].print();
+    }
+    return s;
+}
+void Database::delete_recs(Query q) {
+    for (size_t i = 0;i < db.size();i++)
+    {
+        if (q.check(db[i])) db.erase(db.begin() + i);
     }
     std::cout << "current size is : " << db.size() << std::endl;
 }
-void Database::add_rec(const std::string &fio, const std::string &ip,
-                       const std::string &date, const std::string &tin, const std::string &tout) {
-    record t;
-    t.fio = fio;
-    t.ip = ip;
-    t.date = date;
-    t.tin = tin;
-    t.tout = tout;
-    intarr(ip,t.clip,'.');
-    intarr(date,t.cldate,'-');
-    intarr(tin,t.cltin,' ');
-    intarr(tout,t.cltout,' ');
-    db.push_back(t);
-    std::cout << "Record added successfully" << std::endl;
-    std::cout << db.size() << std::endl;
-}
- 
-void Database::add_rec(record t) {
-    std::cout << "Record added successfully" << std::endl;
-    db.push_back(t);
-}
- 
-std::vector<int> Database::select_recs(const int &id_min, const int &id_max,
-                                       const int &nip, const int &ip_min, const int &ip_max,
-                                       const int &ndate, const int &date_min, const int &date_max)
-{
-    std::vector<int> s;
-    record t;
-    for (size_t i = 0; i < db.size(); i++) {
-        t = db[i];
-        if (((id_min == -1 && id_max == -1) || (t.id>= id_min && t.id <= id_max))
-            &&((nip == -1) || (t.clip[nip] >= ip_min && t.clip[nip] <= ip_max))
-            && ((ndate == -1) || (t.cldate[ndate] >= date_min && t.cldate[ndate] <= date_max)))
-            s.push_back(i);
-    }
-    return s;
-    }
+    /*
  int Database::traffic(const int &id_min, const int &id_max,
                        const int &nip, const int &ip_min, const int &ip_max,
                        const int &ndate, const int &date_min, const int &date_max,
@@ -139,3 +128,4 @@ std::vector<int> Database::select_recs(const int &id_min, const int &id_max,
  }
     return sum;
 }
+  */

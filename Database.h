@@ -12,10 +12,11 @@ private:
 public:
     Database();
     explicit Database(std::string);
-    ~Database();
+    //~Database();
     void delete_recs(Query);
     void add_rec(Record);
     std::vector<Record> select_recs(Query);
+    void print(std::string);
     int bill(Query);
 };
  

@@ -14,7 +14,7 @@ public:
 
     explicit Range(std::string);
 
-    ~Range();
+    //~Range();
 };
 
 class IpRange {
@@ -30,7 +30,7 @@ public:
 
     explicit IpRange(std::string);
 
-    ~IpRange();
+    //~IpRange();
 };
 
 class DateRange {
@@ -43,7 +43,7 @@ public:
 
     DateRange();
     explicit DateRange(std::string);
-    ~DateRange();
+    //~DateRange();
 };
 
 class FioRange {
@@ -56,7 +56,7 @@ public:
 
     FioRange();
     explicit FioRange(std::string, std::string, std::string);
-    ~FioRange();
+    //~FioRange();
 };
 
 class Query {
@@ -71,7 +71,7 @@ public:
 
     explicit Query(std::string);
 
-    ~Query();
+    //~Query();
 
     bool check(Record);
 };
