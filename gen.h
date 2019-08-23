@@ -1,6 +1,4 @@
-//
-// Created by losev on 3/7/19.
-//
+
 
 #ifndef INC_4TERM_GEN_H
 #define INC_4TERM_GEN_H
