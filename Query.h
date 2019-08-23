@@ -2,7 +2,7 @@
 #define PASHA_DB_SERVER_QUERY_H
 
 #include <string>
-#include <Record.h>
+#include </home/pavel/pasha_db_server/Record.h>
 
 class Range {
 private:
