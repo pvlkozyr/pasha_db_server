@@ -4,7 +4,7 @@
 
 #include "Query.h"
 #include "Record.h"
-
+//#include<iostream>
 Range::Range()
 {
     max = -1;
@@ -139,12 +139,15 @@ FioRange::FioRange(std::string firstName,std::string lastName,std::string patron
 
 std::string Query::read_field(std::string field_name, std::string query) {
     int pos = query.find(field_name);
+//    std::cout << field_name << " query:" << query << std::endl;
     if(pos != std::string::npos) {
-        int pos1 = query.find('\t', pos + 1);
+        int pos1 = query.find(':', pos + 1);
         unsigned int value_index = pos + field_name.length();
         if(pos1 != std::string::npos) {
+//            std::cout <<query.substr(value_index, pos1 - value_index )<<std::endl;
             return query.substr(value_index, pos1 - value_index );
         } else {
+//            std::cout <<query.substr(value_index)<<std::endl;
             return query.substr(value_index);
         }
     } else {
@@ -153,6 +156,7 @@ std::string Query::read_field(std::string field_name, std::string query) {
 }
 
 Query::Query(std::string query) {
+    this->style = read_field("style=", query);
     this->id = Range(read_field("id=", query));
     //lastName=Иванов
     //firstName=Иван

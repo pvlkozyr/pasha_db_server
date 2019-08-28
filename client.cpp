@@ -8,6 +8,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <unistd.h>
+#include <chrono>
 #include "fstream"
 #include "iostream"
 
@@ -29,8 +30,8 @@ int  main (void)
     int sock;
     struct sockaddr_in server_addr;
     struct hostent    *hostinfo;
-    std::string filename;
-    std::cin >> filename;
+    std::string filename = "/home/pavel/pasha_db_server/input.txt";
+//    std::cin >> filename;
     std::ifstream file(filename);
     if (!file.is_open()) {
         std::cout << "file doesn't exist" << std::endl;
@@ -67,6 +68,7 @@ int  main (void)
 
     // Обмениваемся данными
     while(writeToServer(sock,file)!=0){
+        sleep(rand()%5);
         readFromServer(sock);
     }
     // Закрываем socket

@@ -39,6 +39,7 @@ private:
     int month;
     int day;
 public:
+    std::string style;
     bool check(Date);
 
     DateRange();
@@ -74,6 +75,8 @@ public:
     //~Query();
 
     bool check(Record);
+
+    std::string style;
 };
 
 
