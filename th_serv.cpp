@@ -1,73 +1,115 @@
 
-#include <stdio.h>
-#include <errno.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
+#include <cstring>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <netdb.h>
 #include <iostream>
-#include <vector>
-#include <fstream>
 #include "/home/pavel/pasha_db_server/Database.h"
-#include "/home/pavel/pasha_db_server/gen.h"
 #include "/home/pavel/pasha_db_server/Query.h"
 #include "/home/pavel/pasha_db_server/Record.h"
-#include <string>
+#include <chrono>
 #include <pthread.h>
-
+#include <functional>
+#include <mutex>
+#include <sstream>
 
 // Определимся с номером порта и другими константами.
 #define PORT    5555
 #define BUFLEN  512
-#define ERROR_CREATE_THREAD -1
-#define ERROR_JOIN_THREAD -2
-#define BAD_MESSAGE -3
-#define SUCCESS 0
-#define NUM_CONNECTIONS 5
 
-// Две вспомогательные функции для чтения/записи (см. ниже)
-int readFromClient(int fd, char *buf);
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+Database db("/home/pavel/pasha_db_server/db.txt");
 
-void writeToClient(int fd, const char *buf);
+void* threadFunction(void* arg) {
+    int new_sock = *(int *) arg;
+    std::cout << "Подключение клиента и создание потока. sock : " <<new_sock << ". Дата: ";
+    std::time_t t;
+    t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    std::cout << std::ctime(&t);
+    int err;
+    char buf[BUFLEN];
+    while (true) {
+        pthread_mutex_lock(&lock);
 
-typedef struct Args_t
-{
-    int id;
-    std::string query;
-    int out;
-};
+        err = recv(new_sock, buf, sizeof(buf), 0);
+
+        pthread_mutex_unlock(&lock);
+        if (err == 0)
+        {
+            pthread_mutex_lock(&lock);
+            std::cout << "закрытие потока и отключение клиента. sock : " <<new_sock << std::endl;
+            close(new_sock);
+
+            pthread_mutex_unlock(&lock);
+            pthread_exit(nullptr);
+        }
+        std::string query = buf;
+
+        if (query == "EXIT") {
+            pthread_mutex_lock(&lock);
+            std::cout << "закрытие потока и отключение клиента командой EXIT. sock : " <<new_sock << ". Дата: ";
+            t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+            std::cout << std::ctime(&t);
+            close(new_sock);
+            pthread_mutex_unlock(&lock);
+            pthread_exit(nullptr);
+        }
+        Query q(query);
+
+        if (q.style == "add") {
+
+            pthread_mutex_lock(&lock);
+
+//            db.add_rec(q);
+            send(new_sock, "Запись была успешно добавлена", 512, 0);
+
+            pthread_mutex_unlock(&lock);
+        }
+        if (q.style == "select") {
+            pthread_mutex_lock(&lock);
+
+            std::cout << "Выборка на основании запроса. sock : "<< new_sock << std::endl;
+            std::vector<Record> s = db.select_recs(q);
+
+            pthread_mutex_unlock(&lock);
+            t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+            std::string result = std::ctime(&t);
+            for (auto &j : s) {
+                result += j.print();
+            }
+            send(new_sock, result.c_str(), 512, 0);
+            result = "";
+        }
+        if (q.style == "delete") {
+            pthread_mutex_lock(&lock);
+            db.delete_recs(q);
+            send(new_sock, "Записи были успешно удалены", 512, 0);
+
+            pthread_mutex_unlock(&lock);
+
+        }
+    }
+}
+
 
 int main() {
 
-    int i, err, opt = 1;
+    int err;
     int sock, new_sock;
-    fd_set active_set, read_set;
     struct sockaddr_in addr;
-    struct sockaddr_in client;
-    char buf[BUFLEN];
-    Database db("/home/pavel/pasha_db_server/db.txt");
-    std::string query;
-    socklen_t size;
-    pthread_t threads[NUM_CONNECTIONS];
-    int th_count;
-    int status;
-    int l;
-    int status_addr;
+    struct sockaddr_storage servStorage;
+    pthread_t thr;
 
-    // Создаем TCP сокет для приема запросов на соединение
     sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (sock < 0) {
         perror("Server: cannot create socket");
         exit(EXIT_FAILURE);
     }
-    setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-    // Заполняем адресную структуру и
-    // связываем сокет с любым адресом
+
+
+    bzero(&addr, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_port = htons(PORT);
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -77,135 +119,31 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    // Создаем очередь на 3 входящих запроса соединения
-    err = listen(sock, NUM_CONNECTIONS);
-    if (err < 0) {
-        perror("Server: listen queue failure");
-        exit(EXIT_FAILURE);
+
+    if (listen(sock, 5) == -1) {
+        perror("ошибка вызова listen()");
+        exit(1);
     }
 
-    // Подготавливаем множества дескрипторов каналов ввода-вывода.
-    // Для простоты не вычисляем максимальное значение дескриптора,
-    // а далее будем проверять все дескрипторы вплоть до максимально
-    // возможного значения FD_SETSIZE.
-    FD_ZERO(&active_set);
-    FD_SET(sock, &active_set);
+    fprintf(stderr, "Сервер готов: %s\n",
+            inet_ntoa(addr.sin_addr));
 
     // Основной бесконечный цикл проверки состояния сокетов
-    while (1) {
-        // Проверим, не появились ли данные в каком-либо сокете.
-        // В нашем варианте ждем до фактического появления данных.
-        read_set = active_set;
-        if (select(FD_SETSIZE, &read_set, NULL, NULL, NULL) < 0) {
-            perror("Server: select  failure");
-            exit(EXIT_FAILURE);
+    socklen_t addr_len;
+
+    int i = 0;
+    while (true) {
+
+        addr_len = sizeof(servStorage);
+
+        if ((new_sock = accept(sock, (struct sockaddr *) &servStorage, &addr_len)) < 0) {
+            perror("Ошибка вызова accept()");
+            exit(1);
         }
-        // Данные появились. Проверим в каком сокете.
-        for (i = 0; i < FD_SETSIZE; i++) {
-            if (FD_ISSET(i, &read_set)) {
-                if (i == sock) {
-                    // пришел запрос на новое соединение
-                    size = sizeof(client);
-                    new_sock = accept(sock, (struct sockaddr *) &client, &size);
-                    if (new_sock < 0) {
-                        perror("accept");
-                        exit(EXIT_FAILURE);
-                    }
-                    fprintf(stdout, "Server: connect from host %s, port %hu.\n",
-                            inet_ntoa(client.sin_addr),
-                            ntohs(client.sin_port));
-                    FD_SET(new_sock, &active_set);
-                    status = pthread_create(&threads[th_count],NULL,funk,(void *), &args[i]);
-                } else {
-                    // пришли данные в уже существующем соединени
-                    err = readFromClient(i, buf);
-                    query = buf;
-                    Query q(query);
-                    std::vector<Record> s = db.select_recs(q);
-                    std::cout << query << " found " << s.size() << "\n";
-                    if (err < 0) {
-                        // ошибка или конец данных
-                        close(i);
-                        FD_CLR(i, &active_set);
-                    } else {
-                        // данные прочитаны нормально
-                        std::string result;
-                        for (int j = 0; j < s.size(); ++j) {
-                            result +=s[j].print();
-                        }
-                        if (!strcmp(buf, "STOP")) {
-                            close(sock);
-                            return 0;
-                        }
-                        writeToClient(i, result.c_str());
-//                        close(i);
-//                        FD_CLR (i, &active_set);
-                        // а если это команда закончить работу?
-                    }
-                }
-            }
+        if (pthread_create(&thr,nullptr,threadFunction,&new_sock) != 0)
+        {
+            std::cout << "Не получается создать поток!" << std::endl;
         }
+
     }
 }
-
-
-int readFromClient(int fd, char *buf) {
-    int nbytes;
-
-    nbytes = read(fd, buf, BUFLEN);
-    if (nbytes < 0) {
-        // ошибка чтения
-        perror("Server: read failure");
-        return -1;
-    } else if (nbytes == 0) {
-        // больше нет данных
-        return -1;
-    } else {
-        // есть данные
-        fprintf(stdout, "Server got message: %s\n", buf);
-
-        return 0;
-    }
-}
-
-
-void writeToClient(int fd, const char *buf) {
-    int nbytes;
-//    unsigned char *s;
-
-    //for (s = (unsigned char *) buf; *s; s++) *s = toupper(*s);
-    nbytes = write(fd, buf, strlen(buf) + 1);
-    fprintf(stdout, "Write back: %s\nnbytes=%d\n", buf, nbytes);
-
-    if (nbytes < 0) {
-        perror("Server: write failure");
-    }
-}
-
-void* funk(void *args)
-{
-    // пришли данные в уже существующем соединени
-    err = readFromClient(i, buf);
-    query = buf;
-    Query q(query);
-    std::vector<Record> s = db.select_recs(q);
-    std::cout << query << " found " << s.size() << "\n";
-    if (err < 0) {
-        // ошибка или конец данных
-        close(i);
-        FD_CLR(i, &active_set);
-    } else {
-        // данные прочитаны нормально
-        std::string result;
-        for (int j = 0; j < s.size(); ++j) {
-            result +=s[j].print();
-        }
-        if (!strcmp(buf, "STOP")) {
-            close(sock);
-            return 0;
-        }
-        writeToClient(i, result.c_str());
-//                        close(i);
-//                        FD_CLR (i, &active_set);
-        // а если это команда закончить работу?
-    }
